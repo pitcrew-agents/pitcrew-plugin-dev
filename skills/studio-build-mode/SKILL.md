@@ -93,7 +93,15 @@ form-extracted (`is_form` works on PDFs only) and loses the layout the extractio
       3. `upload_documents(collection_id, files=[{"s3_key": "<s3_key>", "name": "<filename>"}], is_form=<bool>)`
          registers it. The `s3_key` entry replaces `data`; nothing else changes. If it says nothing was
          uploaded, the curl did not succeed: go back to 2.
-      **Host rule.** `get_upload_url` returns `host` (for example `advisor-intake-bucket.s3.amazonaws.com`). In Claude
+      **Connected-session block.** If the response says `X-Proxy-Error: request blocked` / "no rule allows host" and
+      mentions that network access is limited because the session is connected to the user's computer, the
+      block comes from the session's own policy, not from the link. It can pass once and fail later in the same
+      chat. Do not retry and do not request another link. Tell the user exactly this: "This chat is connected to
+      your computer, so uploads to PitCrew's storage are blocked from here. Either upload the PDF in PitCrew
+      yourself (turn the form option on) and send me the collection name or ID, or start a new chat that is not
+      connected to your computer and I will upload it." Then go to 3.
+
+      **Host rule** (any other blocked-host message). `get_upload_url` returns `host` (for example `advisor-intake-bucket.s3.amazonaws.com`). In Claude
       Desktop and on claude.ai the shell runs in a sandbox that only reaches allowed domains. Tell the user:
       "Allow `<host>` under Settings, Capabilities, Code execution and file creation, Additional allowed domains,
       then start a new chat or ask me to retry; or upload the PDF in PitCrew yourself." Then wait. If the user

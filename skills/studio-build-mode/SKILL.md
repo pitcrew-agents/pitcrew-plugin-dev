@@ -35,7 +35,9 @@ form-extracted (`is_form` works on PDFs only) and loses the layout the extractio
 | `list_collections`, `get_collection` | Step 0: find a collection the user names |
 | `create_collection` | Step 0: no collection yet |
 | `upload_documents` | Step 0: put the source file in the collection (`is_form=true` for a form PDF) |
-| `get_upload_url` | Step 0 fallback: presigned URL to `curl` a PDF or large file in, then `upload_documents` with `s3_key` |
+| `open_upload_ui` | Step 0: drop zone in the chat so the user uploads the original file (preferred for PDFs) |
+| `get_upload_page_url` | Step 0: link to the PitCrew collection page when the drop zone does not show |
+| `get_upload_url` | Step 0, late fallback: presigned URL to `curl` a file in, then `upload_documents` with `s3_key` |
 | `get_collection_status` | Step 0: wait until `overall == "ready"`; gives each `document_id`, `md5_hash` and `form_extraction` |
 | `get_form_extraction`, `get_form_fields`, `start_form_extraction` | Step 0: the fields the backend extracted from a form PDF |
 | `get_relevant_citations` | Steps 1–2: read what the source says (pass `document_id`) |
@@ -75,8 +77,18 @@ form-extracted (`is_form` works on PDFs only) and loses the layout the extractio
    1. **Direct.** Use `data` (base64) only for a small file whose exact bytes you can encode and copy
       without error (a short text file, a small CSV). Never for a PDF form: a PDF is tens of thousands of
       characters, and one wrong character corrupts it silently.
-   2. **Fallback: presigned S3 upload.** For a PDF or any file you cannot send as base64, and only if you can
-      run shell commands and read the file from disk:
+   2. **In-chat drop zone (preferred for PDFs and anything large).** Call
+      `open_upload_ui(collection_id, is_form=<bool>)`. A drop zone appears in the chat. Tell the user:
+      "Drop the original file in the box and press Upload, then tell me 'done'." The file goes from their
+      browser to PitCrew without passing through you or any shell, so nothing is corrupted and no network
+      rule applies. Then run `get_collection_status` (step 4). If the user says no box appeared, this client
+      cannot show it: use route 3.
+   3. **Browser page.** Call `get_upload_page_url(collection_id)` and give the user the `url` and `steps`.
+      They are normally already signed in. They upload the original file there, then tell you "done". Run
+      `get_collection_status` (step 4). If the PDF is a form and the page had no form option, call
+      `start_form_extraction(collection_id, md5_hash)` once it is `ready`.
+   4. **Last technical fallback: presigned S3 upload.** Only if routes 2 and 3 are impossible or failed, you can
+      run shell commands, and the file is on the shell's disk:
       1. `get_upload_url(collection_id, filename)` returns `upload_url`, `s3_key`, `expires_in` and a `curl` command.
          The link lasts 15 minutes and sits in this organization's own folder; a link from another org or
          collection is rejected.
@@ -107,12 +119,13 @@ form-extracted (`is_form` works on PDFs only) and loses the layout the extractio
       then start a new chat or ask me to retry; or upload the PDF in PitCrew yourself." Then wait. If the user
       allows it, retry from `get_upload_url` (a fresh link). If they would rather upload it, go to 3.
       The sandbox can also only upload files it can see: if the file is not on its disk, go to 3.
-   3. **Last resort: the user uploads it.** If neither route works (no shell, the file is not reachable, curl
+   5. **Last resort: the user uploads it.** If no route works (no shell, the file is not reachable, curl
       keeps failing), STOP. Tell the user to upload the original file in PitCrew into a new collection
       (turn the form option on for a form PDF) and give you its name or id, then continue from step 4. Reuse a
       collection only if it holds the original file.
 
    Never convert, summarize, re-encode or shrink the file to get around an upload problem.
+
 4. **Wait.** Call `get_collection_status(collection_id)` until `overall == "ready"`
    (about 20–60 s per PDF plus embedding). Zero documents, `failed`, or still `ingesting` means
    you cannot continue: fix it or tell the user. Keep each document's `document_id`.

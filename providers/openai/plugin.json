@@ -8,7 +8,7 @@
     "url": "https://www.gopitcrew.com/"
   },
   "homepage": "https://www.gopitcrew.com/",
-  "repository": "https://github.com/aluru-intelligence/pitcrew-plugin-dev",
+  "repository": "https://github.com/pitcrew-agents/pitcrew-plugin-dev",
   "license": "MIT",
   "keywords": [
     "compliance",

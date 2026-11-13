@@ -35,9 +35,7 @@ form-extracted (`is_form` works on PDFs only) and loses the layout the extractio
 | `list_collections`, `get_collection` | Step 0: find a collection the user names |
 | `create_collection` | Step 0: no collection yet |
 | `upload_documents` | Step 0: put the source file in the collection (`is_form=true` for a form PDF) |
-| `open_upload_ui` | Step 0: drop zone in the chat so the user uploads the original file (preferred for PDFs) |
-| `get_upload_page_url` | Step 0: link to the PitCrew collection page when the drop zone does not show |
-| `get_upload_url` | Step 0, late fallback: presigned URL to `curl` a file in, then `upload_documents` with `s3_key` |
+| `open_upload_ui` | Step 0: upload box in the chat; the user drops the original file (use for every PDF) |
 | `get_collection_status` | Step 0: wait until `overall == "ready"`; gives each `document_id`, `md5_hash` and `form_extraction` |
 | `get_form_extraction`, `get_form_fields`, `start_form_extraction` | Step 0: the fields the backend extracted from a form PDF |
 | `get_relevant_citations` | Steps 1–2: read what the source says (pass `document_id`) |
@@ -73,56 +71,19 @@ form-extracted (`is_form` works on PDFs only) and loses the layout the extractio
    `is_form` and tell the user the field list will come from reading the document.
    Limits: 10 MB per file and about 5 files per call.
 
-   **Which upload route (decide in this order):**
-   1. **Direct.** Use `data` (base64) only for a small file whose exact bytes you can encode and copy
-      without error (a short text file, a small CSV). Never for a PDF form: a PDF is tens of thousands of
-      characters, and one wrong character corrupts it silently.
-   2. **In-chat drop zone (preferred for PDFs and anything large).** Call
-      `open_upload_ui(collection_id, is_form=<bool>)`. A drop zone appears in the chat. Tell the user:
-      "Drop the original file in the box and press Upload, then tell me 'done'." The file goes from their
-      browser to PitCrew without passing through you or any shell, so nothing is corrupted and no network
-      rule applies. Then run `get_collection_status` (step 4). If the user says no box appeared, this client
-      cannot show it: use route 3.
-   3. **Browser page.** Call `get_upload_page_url(collection_id)` and give the user the `url` and `steps`.
-      They are normally already signed in. They upload the original file there, then tell you "done". Run
-      `get_collection_status` (step 4). If the PDF is a form and the page had no form option, call
+   **How to upload (two ways only):**
+   1. **Small text files:** `upload_documents` with `data` (base64), only for a file whose exact bytes you can
+      encode and copy without error (a short text file, a small CSV). Never for a PDF: a PDF is tens of
+      thousands of characters, and one wrong character corrupts it silently.
+   2. **Everything else, and every PDF form:** call `open_upload_ui(collection_id, is_form=<bool>)`. An
+      upload box appears in the chat. Tell the user in one line: "Drop your file in the box and press Upload."
+      Then stop and wait. The file goes from their browser straight to PitCrew, so you never handle its bytes,
+      nothing is converted and no shell or network rule is involved. When it finishes, the box posts a message
+      into the chat ("Uploaded. Please continue with collection ..."). Then run `get_collection_status` (step 4).
+      If the user says no box appeared, this client cannot show it: ask them to upload the original file in
+      PitCrew (form option on for a form PDF) and send you the collection name or id, then continue from step 4.
+      If the PDF is a form and was uploaded without the form option, call
       `start_form_extraction(collection_id, md5_hash)` once it is `ready`.
-   4. **Last technical fallback: presigned S3 upload.** Only if routes 2 and 3 are impossible or failed, you can
-      run shell commands, and the file is on the shell's disk:
-      1. `get_upload_url(collection_id, filename)` returns `upload_url`, `s3_key`, `expires_in` and a `curl` command.
-         The link lasts 15 minutes and sits in this organization's own folder; a link from another org or
-         collection is rejected.
-      2. Run the returned `curl` in the shell with `<PATH_TO_FILE>` replaced by the file's real path.
-         It uploads the original file unchanged. Do not alter the command, and use the same Content-Type.
-         Then read the result:
-         - exit 0 and an empty body (HTTP 200): uploaded.
-         - the response body is S3 XML (`<Error><Code>...`, for example `SignatureDoesNotMatch`, `ExpiredToken`,
-           `AccessDenied`): the link or Content-Type is wrong or expired. Call `get_upload_url` again and retry
-           ONCE with exactly the returned Content-Type.
-         - a 403, a "blocked" or "not allowed" message, a proxy or HTML page, a connection error, or no XML at
-           all: the shell's network policy is blocking the storage host. Do NOT retry and do NOT ask for a new
-           link: a new link cannot fix a blocked host. Go to the host rule below.
-      3. `upload_documents(collection_id, files=[{"s3_key": "<s3_key>", "name": "<filename>"}], is_form=<bool>)`
-         registers it. The `s3_key` entry replaces `data`; nothing else changes. If it says nothing was
-         uploaded, the curl did not succeed: go back to 2.
-      **Connected-session block.** If the response says `X-Proxy-Error: request blocked` / "no rule allows host" and
-      mentions that network access is limited because the session is connected to the user's computer, the
-      block comes from the session's own policy, not from the link. It can pass once and fail later in the same
-      chat. Do not retry and do not request another link. Tell the user exactly this: "This chat is connected to
-      your computer, so uploads to PitCrew's storage are blocked from here. Either upload the PDF in PitCrew
-      yourself (turn the form option on) and send me the collection name or ID, or start a new chat that is not
-      connected to your computer and I will upload it." Then go to 3.
-
-      **Host rule** (any other blocked-host message). `get_upload_url` returns `host` (for example `advisor-intake-bucket.s3.amazonaws.com`). In Claude
-      Desktop and on claude.ai the shell runs in a sandbox that only reaches allowed domains. Tell the user:
-      "Allow `<host>` under Settings, Capabilities, Code execution and file creation, Additional allowed domains,
-      then start a new chat or ask me to retry; or upload the PDF in PitCrew yourself." Then wait. If the user
-      allows it, retry from `get_upload_url` (a fresh link). If they would rather upload it, go to 3.
-      The sandbox can also only upload files it can see: if the file is not on its disk, go to 3.
-   5. **Last resort: the user uploads it.** If no route works (no shell, the file is not reachable, curl
-      keeps failing), STOP. Tell the user to upload the original file in PitCrew into a new collection
-      (turn the form option on for a form PDF) and give you its name or id, then continue from step 4. Reuse a
-      collection only if it holds the original file.
 
    Never convert, summarize, re-encode or shrink the file to get around an upload problem.
 

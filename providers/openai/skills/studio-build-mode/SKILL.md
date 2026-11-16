@@ -17,9 +17,22 @@ You write the complete `fields[]` array in one call and the `screens[]` in one c
 You do NOT stream or build incrementally field-by-field — write the full arrays at once.
 
 <constraints>
+**First action: the upload box.** If the user's message mentions a form, PDF, document or file to build
+from ("create an artifact from this form", "build this in PitCrew"), your FIRST tool call is
+`open_upload_ui(is_form=true, collection_name="Form: <title or file name>")` (use `is_form=false` for
+non-form documents). Do it before anything else: do not read, summarise or describe the attachment, do not
+ask questions, do not list collections, do not create a collection yourself (the tool does it). Say one line,
+"Drop your file in the box and press Upload", and wait. Skip this only if the user names an existing
+collection, or described the form in words with no file.
 **Collection first, always.** Every form is built from source material that lives in a
 document collection. Never design fields from the chat description or from memory alone.
 `studio_create_session` rejects a call without a ready collection, so you cannot skip step 0.
+
+**Upload the original file, never a copy of it.** If the user gives a file (especially a PDF form),
+the file itself goes into the collection. Never convert, summarize, transcribe, OCR or compress it
+into Markdown, text or any other file and upload that instead. A converted copy cannot be
+form-extracted (`is_form` works on PDFs only) and loses the layout the extraction needs.
+`requirements.md` is only for when the user gave no file at all.
 </constraints>
 
 ## Tools at your disposal
@@ -28,8 +41,10 @@ document collection. Never design fields from the chat description or from memor
 |---|---|
 | `list_collections`, `get_collection` | Step 0: find a collection the user names |
 | `create_collection` | Step 0: no collection yet |
-| `upload_documents` | Step 0: put the source file in the collection |
-| `get_collection_status` | Step 0: wait until `overall == "ready"`; gives each `document_id` |
+| `upload_documents` | Step 0: put the source file in the collection (`is_form=true` for a form PDF) |
+| `open_upload_ui` | FIRST action when a file is involved: upload box in the chat (creates the collection if none is given); the user drops the original file |
+| `get_collection_status` | Step 0: wait until `overall == "ready"`; gives each `document_id`, `md5_hash` and `form_extraction` |
+| `get_form_extraction`, `get_form_fields`, `start_form_extraction` | Step 0: the fields the backend extracted from a form PDF |
 | `get_relevant_citations` | Steps 1–2: read what the source says (pass `document_id`) |
 | `studio_create_session` | After the collection is ready — needs `collection_id`, returns `session_id` |
 | `studio_get_form` | Before any write on an existing draft; after each write to verify |
@@ -48,24 +63,52 @@ document collection. Never design fields from the chat description or from memor
 1. **Find the source.** One of:
    - a file the user attached or named (a sample form, a PDF, a spreadsheet of fields, a prior questionnaire);
    - a collection the user names: `list_collections` / `get_collection`, and reuse it;
-   - only words (they described the form in chat): save their requirements verbatim, plus any
+   - only words, and no file anywhere in the conversation (they described the form in chat): save their requirements verbatim, plus any
      delivery instructions, as `requirements.md` and treat that file as the source.
    If there is neither a file nor a description, ask for one and stop. Do not guess a form.
-2. **Collection.** Reuse the one the user named. Otherwise
+2. **Collection.** Reuse the one the user named. If a file is involved, `open_upload_ui` creates it. Otherwise (words only)
    `create_collection(name="Form: <title>", domain="general")`
    (domains: general, financial, contracts, identity, tax, legal).
-3. **Upload.** `upload_documents(collection_id, files=[{"name": ..., "type": <MIME>, "data": <base64>}])`.
-   Limits: 10 MB per file and about 5 files per call. If you cannot produce the file's bytes
-   here (large or binary file), do not skip the collection. Ask the user to upload it to a
-   collection in PitCrew and give you its name or id.
+3. **Upload.** `upload_documents(collection_id, files=[{"name": ..., "type": <MIME>, "data": <base64>}], is_form=<bool>)`.
+   Set `is_form=true` when the file is a **PDF form** the user wants rebuilt as a form artifact
+   (a blank application, a questionnaire, a sample form). Leave it false for everything else
+   (requirements docs, statements, policies). If the user's file is a form but the PDF is already
+   in the collection, call `start_form_extraction(collection_id, md5_hash)` instead.
+   If the call fails because form extraction is off on this server, upload again without
+   `is_form` and tell the user the field list will come from reading the document.
+   Limits: 10 MB per file and about 5 files per call.
+
+   **How to upload (two ways only):**
+   1. **Small text files:** `upload_documents` with `data` (base64), only for a file whose exact bytes you can
+      encode and copy without error (a short text file, a small CSV). Never for a PDF: a PDF is tens of
+      thousands of characters, and one wrong character corrupts it silently.
+   2. **Everything else, and every PDF form:** call `open_upload_ui(is_form=<bool>, collection_name=...)` (add `collection_id` to use an existing collection). An
+      upload box appears in the chat. Tell the user in one line: "Drop your file in the box and press Upload."
+      Then stop and wait. The file goes from their browser straight to PitCrew, so you never handle its bytes,
+      nothing is converted and no shell or network rule is involved. When it finishes, the box posts a message
+      into the chat ("Uploaded. Please continue with collection ..."). Then run `get_collection_status` (step 4).
+      If the user says no box appeared, this client cannot show it: ask them to upload the original file in
+      PitCrew (form option on for a form PDF) and send you the collection name or id, then continue from step 4.
+      If the PDF is a form and was uploaded without the form option, call
+      `start_form_extraction(collection_id, md5_hash)` once it is `ready`.
+
+   Never convert, summarize, re-encode or shrink the file to get around an upload problem.
+
 4. **Wait.** Call `get_collection_status(collection_id)` until `overall == "ready"`
    (about 20–60 s per PDF plus embedding). Zero documents, `failed`, or still `ingesting` means
    you cannot continue: fix it or tell the user. Keep each document's `document_id`.
-5. **Read it from the collection.** Run `get_relevant_citations(query, document_id=<id>, top_k=15)`
+5. **Extracted fields (form PDFs only).** When the PDF was uploaded as a form, poll
+   `get_form_extraction(collection_id, md5_hash)` until `status == "completed"` (usually 1-2
+   minutes; `failed` means fall back to reading it with citations and tell the user). Then call
+   `get_form_fields(collection_id, md5_hash)`. This is the **primary field list**: build the
+   plan from it, using `references/extracted_fields.md` for how to turn each extracted field into a
+   form field. Still run step 6 to check what the extraction cannot tell you.
+6. **Read it from the collection.** Run `get_relevant_citations(query, document_id=<id>, top_k=15)`
    several times, never once. Query for: section and screen titles, each field label and its
    options, which are required, signature and consent wording, disclosures, who signs
    (single or joint), and any stated verification, expiry or reminder rules. Build the field
-   list from what comes back. If a topic returns nothing, say so; do not invent it.
+   list from what comes back (for a form PDF, this fills in what the extraction lacks: required
+   markers, signature and consent wording, disclosures, delivery rules). If a topic returns nothing, say so; do not invent it.
 
 ### 1. Understand the form
 
@@ -80,7 +123,9 @@ If anything is unclear, ask ONE focused question before building.
 
 ### 2. Plan (show to user, wait for approval)
 
-Every field cites where it came from. Anything not in the collection goes under "Added by me"
+Every field cites where it came from (an extracted field cites its page and label).
+Show the extraction's problems: fields with `type: null`, low `confidence`, or `flags`, and
+`dropped` or `missing` items, each with your proposed handling. Anything not in the collection goes under "Added by me"
 and needs the user's OK.
 
 ```
@@ -208,6 +253,7 @@ Max 3 repair attempts; if still failing, tell the user which errors remain.
 
 ## Key rules
 
+- For a form PDF, start from `get_form_fields`; do not retype the form from the PDF text. Keep the extracted labels and options exactly; change a type only with the user's OK.
 - Work out of the collection: no field without a source, or without the user's OK under "Added by me".
 - NEVER invent type names. Use only canonical strings from field_types.md.
 - `signature` needs `config.signers[{role, nameField}]` and `config.typedMustMatch`.
@@ -227,4 +273,5 @@ Max 3 repair attempts; if still failing, tell the user which errors remain.
 
 - `skills/studio-build-mode/references/field_types.md` — all 52 types with examples
 - `skills/studio-build-mode/references/form_structure.md` — screens, rules, delivery, completion, who fills each field, expression grammar
+- `skills/studio-build-mode/references/extracted_fields.md` — turning `get_form_fields` output into fields, screens and keys
 - `skills/studio-build-mode/references/manual_fill_example.md` — a complete validated two-respondent form

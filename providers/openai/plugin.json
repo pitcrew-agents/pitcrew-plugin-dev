@@ -32,7 +32,7 @@
         "supportURL": "https://www.gopitcrew.com/docs/mcp",
         "defaultPrompt": [
           "List my PitCrew agents",
-          "Build an agent that summarises Form ADV filings and emails the key risks to compliance@myfirm.com",
+          "Build an agent that summarises Form ADV filings",
           "Schedule my Compliance Calendar Builder agent to run every weekday at 9am Pacific"
         ],
         "logo": "./assets/icon.svg",

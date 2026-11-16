@@ -33,35 +33,71 @@
         "defaultPrompt": [
           "List my PitCrew agents",
           "Build an agent that summarises Form ADV filings and emails the key risks to compliance@myfirm.com",
-          "Schedule my Policy Diff Checker to run every weekday at 9am Pacific"
+          "Schedule my Compliance Calendar Builder agent to run every weekday at 9am Pacific"
         ],
         "logo": "./assets/icon.svg",
         "composerIcon": "./assets/icon.svg",
+        "brandColor": "#d9512b",
         "capabilities": [
           "Build compliance AI agents",
           "Run agents on documents",
           "Build client intake forms",
           "Schedule agents with triggers",
           "Chat with existing agents"
-        ],
-        "onboardingSkill": "./skills/orchestrator/SKILL.md"
+        ]
       },
+      "onboardingSkill": "./skills/orchestrator/SKILL.md",
       "publication": {
-        "release_notes": "Initial dev build with 10 skills and a 33-tool MCP server covering agent build, run, collections, validation, policies, and triggers."
+        "release_notes": "Initial dev build with 10 skills and a 33-tool MCP server covering agent build, run, collections, validation, policies, and triggers.",
+        "countries": []
       },
       "review": {
         "test_cases": {
           "positive": [
-            "List my PitCrew agents",
-            "Build an agent that summarises Form ADV filings and highlights the key risks",
-            "Create an intake form for new advisor onboarding with 5 standard questions",
-            "Schedule my Policy Diff Checker to run every weekday at 9am Pacific",
-            "Run my Form ADV Summariser on the attached document"
+            {
+              "description": "User lists existing PitCrew agents.",
+              "prompt": "List my PitCrew agents",
+              "tools_triggered": ["list_agents"],
+              "expected_behavior": "Plugin fetches the user's PitCrew agents and displays them as a numbered list showing agent name and status (published or draft)."
+            },
+            {
+              "description": "User describes a compliance workflow they want to automate. The plugin uses local skills and the tools/ catalog to plan and build the agent spec, then asks for approval before publishing.",
+              "prompt": "Build an agent that summarises Form ADV filings given a CRD number",
+              "tools_triggered": [],
+              "expected_behavior": "Plugin produces a plan for a Form ADV Summariser agent with tasks such as retrieving Parts 1 and 2, extracting disclosures, identifying risks, and generating a report. Shows a link to review the full spec and asks the user to approve and provide a CRD number."
+            },
+            {
+              "description": "User approves the plan and provides the sample CRD. Plugin publishes the agent and runs it end-to-end with in-chat status polling.",
+              "prompt": "Approve. CRD number: 361",
+              "tools_triggered": ["publish_agent", "start_agent_run", "get_run_status"],
+              "expected_behavior": "Plugin publishes the Form ADV Summariser to the user's PitCrew workspace, starts a run with CRD 361 (Goldman Sachs), polls status in-chat until complete, and returns the final summary covering Form ADV Parts 1 and 2, disclosures, and risk findings."
+            },
+            {
+              "description": "User re-runs the same agent on a different firm to confirm the agent generalises across CRDs.",
+              "prompt": "Run the same agent for CRD 128888",
+              "tools_triggered": ["start_agent_run", "get_run_status"],
+              "expected_behavior": "Plugin starts a new run of the Form ADV Summariser with CRD 128888 as input, polls status, and returns the summary for that firm."
+            },
+            {
+              "description": "User asks for a specific slice of the generated report, showing the output is queryable in chat.",
+              "prompt": "What are the top 3 risks from the CRD 361 report?",
+              "tools_triggered": ["get_run_status"],
+              "expected_behavior": "Plugin retrieves the completed CRD 361 run output and lists the top three risk findings with brief explanations for each."
+            }
           ],
           "negative": [
-            "Book me a flight to Mumbai next Friday",
-            "What's the best stock to buy this week?",
-            "Translate this PDF to Spanish"
+            {
+              "description": "User asks to delete all their agents. The MCP server does not expose a delete_agent tool, so the plugin should decline and direct the user to manage deletions in the PitCrew dashboard.",
+              "prompt": "Delete all my PitCrew agents"
+            },
+            {
+              "description": "User asks to run an agent that does not exist in their workspace. Plugin should look it up, fail to find it, suggest the closest matches, and ask for the correct agent name or ID rather than guessing.",
+              "prompt": "Can you run the email classifier agent"
+            },
+            {
+              "description": "User provides an invalid (non-numeric) CRD. Plugin should reject the input and ask for a valid numeric CRD before starting a run.",
+              "prompt": "Run the Form ADV Summariser for CRD banana"
+            }
           ]
         },
         "commerce": false,

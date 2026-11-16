@@ -22,7 +22,7 @@
     "com.openai": {
       "interface": {
         "displayName": "PitCrew (Dev)",
-        "shortDescription": "Build and run AI compliance agents by chatting.",
+        "shortDescription": "Build AI compliance agents",
         "longDescription": "PitCrew turns plain-English requests into runnable compliance agents. Describe an agent, review the plan, and PitCrew publishes it to your workspace and runs it on your documents without leaving the conversation. Built for compliance teams, financial advisors, and operations teams who want to automate repeatable document work.",
         "developerName": "PitCrew",
         "category": "Productivity",
@@ -36,10 +36,36 @@
           "Schedule my Policy Diff Checker to run every weekday at 9am Pacific"
         ],
         "logo": "./assets/icon.svg",
-        "composerIcon": "./assets/icon.svg"
+        "composerIcon": "./assets/icon.svg",
+        "capabilities": [
+          "Build compliance AI agents",
+          "Run agents on documents",
+          "Build client intake forms",
+          "Schedule agents with triggers",
+          "Chat with existing agents"
+        ],
+        "onboardingSkill": "./skills/orchestrator/SKILL.md"
       },
       "publication": {
         "release_notes": "Initial dev build with 10 skills and a 33-tool MCP server covering agent build, run, collections, validation, policies, and triggers."
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            "List my PitCrew agents",
+            "Build an agent that summarises Form ADV filings and highlights the key risks",
+            "Create an intake form for new advisor onboarding with 5 standard questions",
+            "Schedule my Policy Diff Checker to run every weekday at 9am Pacific",
+            "Run my Form ADV Summariser on the attached document"
+          ],
+          "negative": [
+            "Book me a flight to Mumbai next Friday",
+            "What's the best stock to buy this week?",
+            "Translate this PDF to Spanish"
+          ]
+        },
+        "commerce": false,
+        "commerce_description": "The plugin works with any PitCrew account, free or paid. Authentication is via OAuth. No in-plugin purchases, credits, or paid upgrades gated by the plugin."
       }
     }
   }

@@ -101,7 +101,8 @@
           ]
         },
         "commerce": false,
-        "commerce_description": "The plugin works with any PitCrew account, free or paid. Authentication is via OAuth. No in-plugin purchases, credits, or paid upgrades gated by the plugin."
+        "commerce_description": "The plugin works with any PitCrew account, free or paid. Authentication is via OAuth. No in-plugin purchases, credits, or paid upgrades gated by the plugin.",
+        "demo_recording_url": "https://www.loom.com/share/120c3994a0bf4f448ff16d62e540e75f"
       }
     }
   }

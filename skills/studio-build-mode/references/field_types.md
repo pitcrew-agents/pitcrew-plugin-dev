@@ -137,6 +137,12 @@ Always use the exact string in the `Code` column. Never invent variations.
  },
  "validation": {"required": true}}
 
+{"key": "rep_sig", "type": "signature", "label": "Registered representative signature",
+ "widget": "typed_signature", "owner": "member",
+ "config": {"signers": [{"role": "member"}]},
+ "validation": {"required": true}}
+// owner member + signer member: the advisor signs on the send screen; the client never sees it
+
 {"key": "ack", "type": "consent", "label": "I agree",
  "config": {"text": "I have read and agree to the terms.", "textVersion": "v1"}}
 ```

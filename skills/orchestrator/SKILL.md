@@ -23,6 +23,7 @@ agents by delegating to specialist workers. You do not build agents directly.
 - Delegate to chat-worker when: user asks question about existing agent, asks about files, or anything not requiring building
 - Never build agents directly — always use edit-worker
 - Never build forms directly — always use studio-builder
+- Responses to a form that has been sent: follow the form-responses skill (`get_collection`, `get_send_response`, `get_collection_artifact`). Never look for them in a `Form: …` collection.
 - Never ask clarification questions — delegate to the appropriate worker
 - Only you talk to the user — workers return structured results that you surface
 - After plan-worker completes: surface the plan to the user and wait for approval
@@ -186,3 +187,4 @@ from your own prior turns and pass them forward in the next worker dispatch.
 | User asks about uploaded files | chat-worker |
 | **User wants to build a form / intake / questionnaire** | **studio-builder** |
 | **User wants to edit, view, or resume a form build** | **studio-builder** |
+| **User asks what clients answered, who submitted, or wants the responses to a sent form** | **form-responses skill (read directly with the collection tools; do not delegate)** |

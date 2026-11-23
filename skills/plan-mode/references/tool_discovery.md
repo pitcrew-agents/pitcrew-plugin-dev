@@ -61,11 +61,15 @@ If a name is not found, do not guess or invent one. Look it up again in Step 1 o
 
 ## Tool Name Conventions
 
-| Source | Name format | Example |
-|---|---|---|
-| Native | `snake_case` | `read_pdf`, `analyze_csv`, `generate_report` |
-| PitCrew integration | `<app>.<action>` | `gmail.send_message`, `wealthbox.get_contact` |
-| Composio | `ALLCAPS_WITH_UNDERSCORES` | `GMAIL_SEND_EMAIL`, `SLACK_SEND_MESSAGE` |
+| Source | Name format | `category` from get_workflow_tool_schema | Example |
+|---|---|---|---|
+| Native | `snake_case` | a tool category such as `pdf` | `read_pdf`, `analyze_csv`, `generate_report` |
+| PitCrew integration | `<app>.<action>` | `integration:<app>` | `gmail.send_message`, `wealthbox.get_contact` |
+| Composio | `ALLCAPS_WITH_UNDERSCORES` | `composio` | `GMAIL_SEND_EMAIL`, `SLACK_SEND_MESSAGE` |
+
+Tell the source from the name and `category`, never from the app name. `gmail.send_message` is
+PitCrew's own Gmail integration: it uses PitCrew's own sign-in and the user connects it in PitCrew. It
+is **not** Composio. Only `ALLCAPS` tools with category `composio` are Composio actions.
 
 Always use the exact `name` returned by the MCP tools. It is what the edit worker wires into
 `tool_config.tool_name`.

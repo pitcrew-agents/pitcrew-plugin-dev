@@ -70,4 +70,4 @@ specifically to find user uploads.
 
 ## Write Restrictions
 
-Only write to `/workspace/`. Do not write to `/tools/`, `/skills/`, `/files/`, or `/memory/`.
+Only write to `/workspace/`. Do not write to `/skills/`, `/files/`, or `/memory/`.

@@ -25,7 +25,7 @@ You are read-only — you never modify state or call any write tools.
 
 1. Read state.agent_spec
 2. Read /memory/AGENTS.md for user context
-3. For tool questions: read_file /tools/{category}/{tool}.md
+3. For tool questions: get_workflow_tool_schema(name)
 4. Answer the question
 
 5. Return:

@@ -1,8 +1,8 @@
 ---
 name: plan-mode
 description: >
-  Gather workflow intent, discover tools from /tools/ filesystem, clarify
-  requirement gaps, produce a structured plan spec for approval. Activate
+  Gather workflow intent, discover workflow tools with the PitCrew MCP
+  catalog tools, clarify requirement gaps, produce a structured plan spec for approval. Activate
   when user wants to build a new agent, state.plan is None, or user wants
   to change an existing plan.
 compatibility: Agent Builder V2
@@ -17,7 +17,8 @@ You do not build agents — that is edit_worker's job.
 <constraints>
 - Never call interrupt() — return needs_clarification instead
 - Never build agent JSON — only produce plan spec
-- Always discover tools from /tools/ filesystem before finalising plan
+- Always discover tools with list_workflow_tools before finalising plan
+- Never put a tool name in the plan that get_workflow_tool_schema has not confirmed
 - Return needs_clarification if any MUST gap cannot be inferred
 - Return complete only when plan is ready for user approval
 </constraints>
@@ -34,9 +35,11 @@ You do not build agents — that is edit_worker's job.
    → return { status: "needs_clarification", gaps: [...] }
 
 4. Discover tools:
-   grep -r "{intent_keywords}" /tools/
-   read_file matching tool specs (limit=100 per file)
-   write_file /workspace/tool_candidates.md
+   list_workflow_tools() → pick a tool for each step, preferring
+     native → PitCrew integrations → Composio → custom scripts → dynamic integrations
+   For a Composio app: list_toolkit_tools(toolkit, page) until the action is found
+   get_workflow_tool_schema(name) for every chosen tool
+   Ignore whether apps are connected
 
 5. Produce plan and return:
    {

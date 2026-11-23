@@ -1,124 +1,61 @@
 # Tool Discovery Guide
 
-This guide explains how to find relevant tools from the virtual filesystem
-at `/tools/`. Use this during the plan_worker's tool discovery step.
+Workflow tools are the building blocks a PitCrew agent runs inside its workflow. You do not call
+them yourself; you find them through three PitCrew MCP tools and put their names in the plan.
 
----
-
-## Filesystem Layout
-
-```
-/tools/
-  shared/
-    builtin/          ← built-in platform tools (always available)
-      pdf_tools.md
-      csv_analysis_tools.md
-      code_gen_tools.md
-      report_tools.md
-      ...one .md file per category
-    composio/         ← external integrations (Gmail, Slack, HubSpot, Salesforce, etc.)
-      gmail_tools.md
-      slack_tools.md
-      salesforce_tools.md
-      ...one .md file per toolkit
-    dynamic/          ← platform-level dynamic integrations
-      ...
-  org/
-    {org_id}/
-      custom/         ← org-specific custom scripts
-        ...
-      dynamic/        ← org-specific integrations
-        ...
-```
-
-Each `.md` file contains multiple tools, each as an `## ToolName` heading
-followed by a JSON schema block with `name`, `description`, `input_schema`,
-and `output_schema`.
+| MCP tool | Use it to |
+|---|---|
+| `list_workflow_tools()` | See the name and description of every workflow tool, plus the list of Composio toolkits |
+| `list_toolkit_tools(toolkit, page)` | See the actions inside one Composio toolkit, 100 per page |
+| `get_workflow_tool_schema(name)` | Confirm a tool exists and read its inputs and outputs |
 
 ---
 
 ## Step-by-Step Discovery Process
 
-### Step 1 — List available categories
+### Step 1: List everything once
 
-Start with a broad `ls` to see what tool categories exist:
+Call `list_workflow_tools()` at the start of discovery. It returns four groups:
 
-```
-ls /tools/shared/builtin/
-ls /tools/shared/composio/
-```
+- `native`: PitCrew's built-in tools (PDF, Excel, CSV, compliance, SEC, reports, files, HTTP, ...)
+- `integrations`: PitCrew's own integration tools, named `<app>.<action>` (e.g. `gmail.send_message`,
+  `wealthbox.get_contact`, `tradepmr.get_account`)
+- `custom_scripts`: the organisation's own published scripts
+- `toolkits`: Composio apps (slug, name, description). Their actions are not listed here.
 
-This shows you the file names (e.g. `pdf_tools.md`, `gmail_tools.md`).
-Each file name tells you what category of tools it contains.
+Read the names and descriptions and pick one tool for each step of the workflow.
 
-### Step 2 — Search by keyword
+### Step 2: Pick in this order of preference
 
-Use `grep` to quickly find tools matching your intent keywords.
-Search the entire `/tools/` tree in one call:
+For each step, use the first group that covers it:
 
-```
-grep -r "pdf" /tools/
-grep -r "email" /tools/
-grep -r "compliance" /tools/
-grep -r "salesforce" /tools/
-```
+1. **Native tools**
+2. **PitCrew integrations** (`<app>.<action>`). Prefer these over a Composio toolkit for the same app:
+   use `gmail.send_message`, not `GMAIL_SEND_EMAIL`.
+3. **Composio toolkits**, only when no native or PitCrew integration tool covers the step
+4. **Custom scripts**
+5. **Dynamic integrations**
 
-The results show you which files contain relevant tools and which heading names match.
+Ignore whether an app is connected. The user connects it when the agent runs.
 
-**Good keywords to try based on intent:**
-- File processing: `pdf`, `csv`, `excel`, `extract`, `parse`, `read`
-- Integrations: the service name — `gmail`, `slack`, `hubspot`, `salesforce`, `box`
-- Data operations: `validate`, `analyse`, `analyse`, `compare`, `score`
-- Output: `report`, `email`, `send`, `notify`, `generate`
-- Web: `scrape`, `http`, `url`, `crawl`
+If the user names an app ambiguously (for example "calendar" or "CRM") and more than one app fits,
+ask which one they use.
 
-### Step 3 — Read matching tool files
+### Step 3: Find Composio actions when needed
 
-Once you know which file(s) contain relevant tools, read them:
+When a step needs a Composio app:
 
-```
-read_file /tools/shared/builtin/pdf_tools.md limit=100
-read_file /tools/shared/composio/gmail_tools.md limit=100
-```
+1. Pick the toolkit from the `toolkits` list by its description, e.g. `hubspot`.
+2. Call `list_toolkit_tools(toolkit="hubspot")`.
+3. If the right action is not on the page and `has_more` is true, call again with `page` + 1.
+   Large toolkits such as GitHub (about 870 actions) span several pages.
 
-The `limit=100` keeps context small — enough to see all tool names and descriptions.
-Read the full schema block only for tools you plan to include in the plan.
+### Step 4: Confirm every chosen tool
 
-### Step 4 — Check all_integrations index
+Call `get_workflow_tool_schema(name)` for each tool you plan to use. It confirms the tool exists and
+shows the inputs it needs, so you can check the plan can supply them.
 
-For external integrations, there is a summary index file:
-
-```
-read_file /tools/shared/composio/all_integrations.md
-```
-
-This gives you a one-line description per toolkit so you can quickly decide
-which integrations are relevant without reading each file.
-
-### Step 5 — Write candidates to workspace
-
-After identifying candidate tools, write them to the workspace so the orchestrator
-and edit_worker can reference them:
-
-```
-write_file /workspace/tool_candidates.md
-```
-
-Format:
-```markdown
-# Tool Candidates
-
-## Selected Tools
-
-- **read_pdf** (builtin) — Extracts text from PDF files
-- **validate_content** (builtin) — Validates content against policy rules
-- **generate_report** (builtin) — Generates structured visual report
-- **GMAIL_SEND_EMAIL** (composio:gmail) — Sends email via Gmail
-
-## Considered but Excluded
-
-- analyze_csv — user's input is PDF, not CSV
-```
+If a name is not found, do not guess or invent one. Look it up again in Step 1 or Step 3.
 
 ---
 
@@ -126,75 +63,72 @@ Format:
 
 | Source | Name format | Example |
 |---|---|---|
-| Built-in | `snake_case` | `read_pdf`, `analyze_csv`, `generate_report` |
-| Composio | `ALLCAPS_WITH_UNDERSCORES` | `GMAIL_SEND_EMAIL`, `SLACK_POST_MESSAGE` |
+| Native | `snake_case` | `read_pdf`, `analyze_csv`, `generate_report` |
+| PitCrew integration | `<app>.<action>` | `gmail.send_message`, `wealthbox.get_contact` |
+| Composio | `ALLCAPS_WITH_UNDERSCORES` | `GMAIL_SEND_EMAIL`, `SLACK_SEND_MESSAGE` |
 
-Always use the exact tool name as it appears in the tool file — these are
-what the edit_worker will wire into tool_config.tool_name.
+Always use the exact `name` returned by the MCP tools. It is what the edit worker wires into
+`tool_config.tool_name`.
 
 ---
 
-## Always-Available Tools
+## Common Native Tools
 
-These tools are always available regardless of the tool index.
-You do not need to discover them — include them in any plan that needs them:
+These cover most workflows. Still confirm each one with `get_workflow_tool_schema` before using it.
 
 | Tool | When to use |
 |---|---|
 | `download_file` | Download a file from a URL to make it available for other tools |
 | `read_pdf` | Extract text from a PDF |
+| `read_pdf_tables` | Extract tables from a PDF |
 | `analyze_csv` | Parse and analyse a CSV file |
-| `excel_reader` | Read Excel files (.xlsx, .xls) |
-| `read_pdf_tables` | Extract tables specifically from PDFs |
 | `write_file` | Write content to a file |
 | `read_file` | Read a file's content |
 | `http_get` | Make an HTTP GET request |
 | `http_post` | Make an HTTP POST request |
 | `scrape_url` | Scrape content from a web page |
 | `code_gen` | Generate and execute Python code in a sandbox (no network access) |
-| `generate_report` | Generate a rich structured report (ALWAYS use as final task) |
+| `validate_content` | Validate content against policy rules |
+| `generate_report` | Generate a rich structured report (always use as the final task) |
 
 ---
 
 ## Choosing Between Tools
 
 ### File processing
-- PDF → `read_pdf` (text) or `read_pdf_tables` (tables)
-- CSV → `analyze_csv`
-- Excel → `excel_reader`
-- Word/HTML → use `download_file` first, then `read_file`
+- PDF: `read_pdf` (text) or `read_pdf_tables` (tables)
+- CSV: `analyze_csv`
+- Excel: look for the Excel tools in the `native` group of `list_workflow_tools`
+- Word/HTML: `download_file` first, then `read_file`
 
 ### External services
-- Gmail → `GMAIL_SEND_EMAIL`, `GMAIL_FETCH_EMAILS`
-- Slack → `SLACK_POST_MESSAGE`, `SLACK_FETCH_MESSAGES`
-- HubSpot → search `grep -r "hubspot" /tools/`
-- Salesforce → `grep -r "salesforce" /tools/`
-- Other → check `all_integrations.md` then grep for the service name
+- Gmail: `gmail.send_message`, `gmail.list_messages`, `gmail.read_message` (PitCrew integration)
+- Wealthbox, TradePMR, Google Drive: their `<app>.<action>` PitCrew integration tools
+- Slack, HubSpot, Salesforce and other apps: the Composio toolkit, via `list_toolkit_tools`
 
 ### Data validation/compliance
-- Policy checks → `validate_content` (if it appears in grep results)
-- Custom validation logic → `code_gen` (Python sandbox, no network)
-- LLM-based assessment → use an `llm_call` task in the agent
+- Policy checks: `validate_content`
+- Custom validation logic: `code_gen` (Python sandbox, no network)
+- LLM-based assessment: use an `llm_call` task in the agent
 
 ### Final output (always include)
-- `generate_report` — for any agent producing structured findings, summaries, or reports
+- `generate_report` for any agent producing structured findings, summaries, or reports
 - Do NOT use plain `llm_call` as the last task unless the output is conversational text only
 
 ---
 
 ## Inclusion in the Plan
 
-In `submit_plan()`, the `tools` parameter should list the exact tool names
-the edit_worker will use in tool_config.tool_name:
+The plan's `tools` list holds the exact tool names the edit worker will use in
+`tool_config.tool_name`:
 
 ```json
-["read_pdf", "validate_content", "GMAIL_SEND_EMAIL", "generate_report"]
+["read_pdf", "validate_content", "gmail.send_message", "generate_report"]
 ```
 
 Do NOT include:
 - Tools you discovered but won't use
-- Vague categories or filenames
+- Vague categories or toolkit slugs
 - Tools that require integrations the user hasn't mentioned needing
 
-The edit_worker will read the tool schemas from `/tools/` using these names
-to get the exact input_schema parameters before building the agent.
+The edit worker reads each tool's schema with `get_workflow_tool_schema(name)` before building the agent.

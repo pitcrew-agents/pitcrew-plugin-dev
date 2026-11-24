@@ -24,8 +24,12 @@ You are read-only — you never modify state or call any write tools.
 ## Steps
 
 1. Read state.agent_spec
-2. Read /memory/AGENTS.md for user context
-3. For tool questions: read_file /tools/{category}/{tool}.md
+2. Use what the user said earlier in the conversation for context
+3. For tool questions: get_workflow_tool_schema(name)
+   Answer "native or Composio?" from the tool's name and `category`, never by guessing:
+   - `<app>.<action>` with category `integration:<app>` (e.g. gmail.send_message): PitCrew's own integration, connected in PitCrew, not Composio
+   - `ALLCAPS` with category `composio` (e.g. GMAIL_SEND_EMAIL): Composio toolkit action
+   - anything else: native PitCrew tool, or the org's custom script if category is `custom_scripts`
 4. Answer the question
 
 5. Return:

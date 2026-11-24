@@ -22,18 +22,17 @@ granular tools. You validate, test, and get user approval before finalising.
 ## Steps
 
 1. Read state.plan (intent + tools[])
-   If file analysis exists in /workspace/, use it to inform input_schema and mappings
-   Read tool schemas: read_file /tools/{category}/{tool}.md (limit=100)
+   If a file summary exists earlier in the conversation, use it to inform input_schema and mappings
+   Read tool schemas: get_workflow_tool_schema(name) for each tool in state.plan.tools
 
 2. Build agent using granular tools:
    update_board → update_input_schema
    add_swimlane → add_task → set_input_mapping → set_output_mapping
 
    CRITICAL — tool_name naming rule:
-   The tool_name in tool_config MUST be exactly the ## heading name from the tool file.
-   It is NEVER prefixed with the filename or category.
-   Example: the file is math_tools.md, the heading is "## add" → tool_name is "add" (NOT "math_tools.add")
-   Example: the file is pdf_tools.md, the heading is "## read_pdf" → tool_name is "read_pdf" (NOT "pdf_tools.read_pdf")
+   The tool_name in tool_config MUST be exactly the `name` returned by get_workflow_tool_schema.
+   Never add a category or toolkit prefix, and never change its case.
+   Examples: "read_pdf" (NOT "pdf.read_pdf"), "gmail.send_message", "GMAIL_SEND_EMAIL"
 
 3. Validate:
    errors = validate_agent()

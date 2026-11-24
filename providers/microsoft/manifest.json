@@ -1,0 +1,50 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.29/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.29",
+  "version": "0.1.0",
+  "id": "0d833498-1662-5751-a92a-883fbc86bf05",
+  "developer": {
+    "name": "PitCrew",
+    "websiteUrl": "https://www.gopitcrew.com/",
+    "privacyUrl": "https://www.gopitcrew.com/privacy",
+    "termsOfUseUrl": "https://www.gopitcrew.com/terms"
+  },
+  "name": {
+    "short": "PitCrew (Dev)",
+    "full": "PitCrew (Dev)"
+  },
+  "description": {
+    "short": "Build and run AI compliance agents by chatting.",
+    "full": "Build and run AI compliance agents by chatting. Describe an agent in plain English and PitCrew drafts it, publishes it to your workspace, and runs it on your documents, without leaving the conversation."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#d9512b",
+  "agentSkills": [
+    { "folder": "./skills/bulk-run-automation" },
+    { "folder": "./skills/chat-mode" },
+    { "folder": "./skills/config-mode" },
+    { "folder": "./skills/edit-mode" },
+    { "folder": "./skills/file-handling" },
+    { "folder": "./skills/knowledge-mode" },
+    { "folder": "./skills/loop-mode" },
+    { "folder": "./skills/orchestrator" },
+    { "folder": "./skills/plan-mode" },
+    { "folder": "./skills/studio-build-mode" },
+    { "folder": "./skills/trigger-automation" }
+  ],
+  "agentConnectors": [
+    {
+      "id": "pitcrew-mcp-dev",
+      "displayName": "PitCrew MCP Dev",
+      "description": "Build, publish and run PitCrew compliance agents (dev environment).",
+      "toolSource": {
+        "remoteMcpServer": {
+          "mcpServerUrl": "https://mcp.dev.gopitcrew.com/mcp"
+        }
+      }
+    }
+  ]
+}

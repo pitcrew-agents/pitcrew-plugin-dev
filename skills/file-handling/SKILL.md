@@ -1,9 +1,9 @@
 ---
 name: file-handling
 description: >
-  Read and analyze files uploaded by the user. Use when the user references
-  a file, data, document, CSV, or PDF, or when uploaded files are relevant
-  to the current request. Files are at /files/, workspace cache at /workspace/.
+  Read and analyze files the user shares. Use when the user references
+  a file, data, document, CSV, or PDF, or when shared files are relevant
+  to the current request.
 compatibility: Agent Builder V2
 ---
 
@@ -15,59 +15,35 @@ unrelated to files or documents.
 
 ## Reading Files
 
-Use `read_file` for all file types — PDF, CSV, Excel, Word, and text files
-are all supported. Always use `limit` to avoid flooding context.
+Read the file through whatever the host gives you: a file attached to the chat,
+or the host's own file-reading tool for a file the user points to. There is no
+fixed folder for uploads, so do not look for one.
 
-```
-CSV / JSON / text:  read_file("/files/{filename}", offset=0, limit=100)
-PDF / Excel / Word: read_file("/files/{filename}", offset=0, limit=50)
-```
+- Read only what you need. For large files, read the first part (for example the
+  first 100 rows of a CSV or the first few pages of a PDF) and read more only if
+  the question needs it.
+- Do not paste large raw contents back to the user.
 
-Use `offset` to read further sections if the initial view is insufficient.
+## Keep a Summary in the Conversation
 
-## Workspace Cache
+After reading a file, note a short summary in your reply so later steps (plan-mode,
+edit-mode, chat-mode) can use it without reading the file again:
 
-<constraints>
-Always write analysis to /workspace/ after reading any file from /files/.
-This is required — not optional.
-</constraints>
+- Structure: column names and data types, document sections, key topics
+- Key facts that the agent's inputs, mappings or tool choices depend on
+- Do NOT copy raw data rows
 
-After reading a file, write to `/workspace/analysis_{filename}.md`:
-- Structural information: column names, data types, document sections, key topics
-- Key facts and insights from the content that may be referenced again
-- Do NOT copy raw data rows — summarise what matters
+Do not write analysis files to disk. The plan, the agent_spec and file summaries all
+live in the conversation.
 
-**Before reading a raw file, always check the cache first:**
-```
-ls /workspace/
-→ analysis_{filename}.md found → read_file("/workspace/analysis_{filename}.md", limit=100)
-→ not found → read raw file with limit → write analysis to workspace → respond
-```
+If a later question needs data that is not in the summary, read the file again with a
+targeted range.
 
-**Naming convention** — lowercase, replace dots and spaces with underscores:
-```
-clients.csv             → /workspace/analysis_clients_csv.md
-Factory.pdf             → /workspace/analysis_factory_pdf.md
-Patricia's Client Data.xlsx → /workspace/analysis_patricias_client_data_xlsx.md
-```
+## Getting a File into PitCrew
 
-If a question requires specific data not in the cache, re-read the file
-directly with targeted offset/limit — but still keep the cache updated.
+Reading a file in the chat does not send it to PitCrew. When an agent run, a
+collection or a form needs the file itself, use PitCrew's upload flow instead of
+pasting its contents:
 
-## File Path
-
-Uploaded files live at `/files/` — always use this path, not `/`.
-
-```
-ls /files/                                 → list all uploaded files
-read_file("/files/clients.csv", limit=100) → read first 100 lines
-read_file("/files/Factory.pdf")            → read PDF (sent natively to model)
-read_file("/files/data.xlsx")              → read Excel as text
-```
-
-The root path `/` shows top-level directories. Always navigate to `/files/`
-specifically to find user uploads.
-
-## Write Restrictions
-
-Only write to `/workspace/`. Do not write to `/tools/`, `/skills/`, `/files/`, or `/memory/`.
+- Collections and forms: `open_upload_ui` (see studio-build-mode)
+- Agent run inputs: `open_agent_input_form` (see the orchestrator's runner flow)

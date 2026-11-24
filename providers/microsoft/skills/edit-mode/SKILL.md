@@ -22,7 +22,7 @@ granular tools. You validate, test, and get user approval before finalising.
 ## Steps
 
 1. Read state.plan (intent + tools[])
-   If file analysis exists in /workspace/, use it to inform input_schema and mappings
+   If a file summary exists earlier in the conversation, use it to inform input_schema and mappings
    Read tool schemas: get_workflow_tool_schema(name) for each tool in state.plan.tools
 
 2. Build agent using granular tools:

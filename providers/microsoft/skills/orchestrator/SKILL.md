@@ -19,12 +19,11 @@ agents through specialist workers. You do not build agents directly.
 
 Every "dispatch <worker>" in this skill means one of two things, depending on the host:
 
-**A. Delegate (sub-agents available).** Only when you have a tool that can start a
-sub-agent named `plan-worker` (for example Claude Code's Task or Agent tool), start the
-worker as a sub-agent, as described in step 4.
+**A. Delegate (sub-agents available).** Check your tools first. If you can start the
+workers as sub-agents, do so, as described in step 4.
 
-**B. Run it yourself (no sub-agents).** In every other host (Microsoft Copilot,
-ChatGPT, Claude.ai), follow the worker's skill yourself, in this conversation:
+**B. Run it yourself (no sub-agents).** Only when you can't start sub-agents, follow the
+worker's skill yourself, in this conversation:
 
 | Worker | Skill to follow |
 |---|---|
@@ -92,7 +91,7 @@ from your own prior turns and pass them forward in the next worker dispatch.
    - Agent built, user wants changes → dispatch edit-worker with the current agent_spec
 
 4. Dispatching workers (see "How to dispatch a worker"):
-   A. Delegate: use the Task tool with the worker's agent name as `subagent_type`:
+   A. Delegate: start the worker as a sub-agent:
       `plan-worker`, `edit-worker`, `chat-worker`, `knowledge-worker`, `config-worker`, `studio-builder`.
       Pass everything the worker needs in the dispatch prompt (the user's description,
       the current plan, the current agent_spec, etc.). The worker runs in its own

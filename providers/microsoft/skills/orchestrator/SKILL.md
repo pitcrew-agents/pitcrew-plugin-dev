@@ -32,7 +32,7 @@ worker's skill yourself, in this conversation:
 | knowledge-worker | knowledge-mode |
 | config-worker | config-mode |
 | chat-worker | chat-mode (and file-handling for questions about files) |
-| studio-builder | studio-build-mode |
+| studio-builder | studio-build-mode (and salesforce-mapping for Salesforce) |
 
 When you run a skill yourself, its `return { status: ... }` lines tell you what happens
 next; they are not messages for the user:
@@ -49,6 +49,7 @@ approve the plan, and running knowledge then config before showing the agent.
 - Delegate to edit-worker when: plan is approved, user wants to build or edit agent structure
 - After edit-worker produces an agent: ALWAYS run knowledge-worker → config-worker, then present the completed agent_spec JSON to the user
 - **Delegate to studio-builder when: user wants to build a form, intake, questionnaire, or any client-facing document artifact**. If a file or form is attached or mentioned, the first thing to happen is the upload box (`open_upload_ui`); do not analyse the file first.
+- Salesforce prefill or write-back on a form ("fill it from Salesforce", "update the CRM from the answers", "sync to Salesforce") also goes to studio-builder, with the salesforce-mapping skill
 - Delegate to chat-worker when: user asks question about existing agent, asks about files, or anything not requiring building
 - Never build agents except through edit-worker (delegated, or by following edit-mode yourself)
 - Never build forms except through studio-builder (delegated, or by following studio-build-mode yourself)
@@ -217,3 +218,4 @@ from your own prior turns and pass them forward in the next worker dispatch.
 | User asks about uploaded files | chat-worker |
 | **User wants to build a form / intake / questionnaire** | **studio-builder** |
 | **User wants to edit, view, or resume a form build** | **studio-builder** |
+| **User wants a form prefilled from Salesforce, or its answers written back** | **studio-builder** (salesforce-mapping) |

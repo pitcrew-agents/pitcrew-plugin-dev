@@ -51,6 +51,7 @@ form-extracted (`is_form` works on PDFs only) and loses the layout the extractio
 | `studio_write_fields` | Write form header + ALL fields atomically |
 | `studio_write_structure` | Write ALL screens + rules + completion |
 | `studio_set_delivery` | Verification (email/SMS code), link expiry, reminders, invite email |
+| `crm_status`, `crm_get_schema`, `studio_get_crm_mapping`, `studio_set_crm_mapping` | Step 5c, when the user wants Salesforce prefill or write-back: follow the **salesforce-mapping** skill |
 | `studio_validate_form` | After EVERY write — fix all errors before continuing |
 | `studio_list_sessions` | To find an existing session to resume |
 | `studio_publish_form` | Only when the user asks to publish; see step 7 |
@@ -212,6 +213,13 @@ After the call, call `studio_validate_form` and fix any errors.
 Call `studio_set_delivery` once with the settings from the plan. Read its `warnings` and relay
 them to the user (for example the SMS note). Then `studio_validate_form`.
 
+### 5c. Salesforce (only when the user wants it)
+
+If the user mentioned Salesforce, a CRM, prefill from client records, or updating the CRM from answers, follow the **salesforce-mapping** skill
+(`skills/salesforce-mapping/SKILL.md`) now that the fields exist: it maps each question to a Salesforce field for prefill (read) and write-back,
+and sets manual or automatic write-back. Put its mapping table in the plan you show at step 2 when you already know the user wants it.
+If they did not mention it, skip this step and do not bring it up.
+
 ### 6. Show the result
 
 Call `studio_get_form` and show the returned `form_draft` to the user in a fenced code block.
@@ -261,7 +269,7 @@ Max 3 repair attempts; if still failing, tell the user which errors remain.
 - Only use `validation` keys the type allows (for example `minAge` only on `date_of_birth`, `minSelected` only on `multi_select`). `field_types.md` lists them.
 - `government_id` and `bank_account` are **secret and web-only** — never include them in SMS forms.
 - Conditional fields: `visibleWhen` and `requiredWhen` are always `{"expr": "..."}` objects.
-- Do NOT add `binding`, `writeBack`, `sourceMapping`, `connectors` or `sourceCollectionId`. Connected data is not supported by this builder yet; every field is filled by hand.
+- Do NOT hand-write `binding`, `writeBack`, `sourceMapping`, `connectors` or `sourceCollectionId` in fields. Salesforce prefill and write-back are set only with `studio_set_crm_mapping` (step 5c, the **salesforce-mapping** skill); without it every field is filled by hand.
 - Decide who fills each field: client (default), advisor (`"owner": "member"`), or a second person (`"respondent": "co_client"`). See "Who fills each field" in `form_structure.md`.
 - Multi-respondent: pass `respondents` in `studio_write_fields`, listing `client` first and then `co_client`; add `"respondent": "co_client"` on co-client fields.
 - Completion variants use `when`, never `condition`.
@@ -275,3 +283,4 @@ Max 3 repair attempts; if still failing, tell the user which errors remain.
 - `skills/studio-build-mode/references/form_structure.md` — screens, rules, delivery, completion, who fills each field, expression grammar
 - `skills/studio-build-mode/references/extracted_fields.md` — turning `get_form_fields` output into fields, screens and keys
 - `skills/studio-build-mode/references/manual_fill_example.md` — a complete validated two-respondent form
+- `skills/salesforce-mapping/SKILL.md` — Salesforce prefill and write-back (step 5c)

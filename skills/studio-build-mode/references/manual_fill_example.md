@@ -19,9 +19,13 @@ Build order: collection with the source file ready → `studio_create_session(co
 {
   "title": "Joint account application",
   "schemaVersion": "0.3.0",
+  "progress": ["step", "minutes_left"],
+  "oneRowPerQuestion": true,
   "delivery": {"allowFinishLater": true}
 }
 ```
+(`progress` turns on "Step 2 of 4 · about 3 min left"; without it no progress line shows. `oneRowPerQuestion` merges the client's and joint holder's
+matching questions into one row on the "What you control" tab.)
 (The real delivery settings are written with `studio_set_delivery` below.)
 
 `respondents` (client first, then the extra person)
@@ -110,7 +114,7 @@ Notes
 `screens`
 ```json
 [
-  {"id": "setup", "title": "Your account", "estimatedMinutesLeft": 5, "submitLabel": "Start",
+  {"id": "setup", "title": "Your account", "estimatedMinutesLeft": 5, "heading": "Let's set up your account",
    "sections": [{"fields": ["registration", "needed_by", "advisor_note", "what_youll_need"]}]},
   {"id": "details", "title": "Your details", "estimatedMinutesLeft": 3,
    "sections": [
@@ -118,7 +122,7 @@ Notes
      {"title": "Joint account holder", "fields": ["co_name", "co_email"]}]},
   {"id": "secure", "title": "Secure details", "estimatedMinutesLeft": 2,
    "sections": [{"fields": ["primary_ssn", "primary_ssn_confirm"]}]},
-  {"id": "sign", "title": "Review and sign", "estimatedMinutesLeft": 1, "submitLabel": "Sign",
+  {"id": "sign", "title": "Review and sign", "estimatedMinutesLeft": 1,
    "summaryOf": ["registration", "primary_name"],
    "sections": [
      {"title": "Account holder", "fields": ["primary_agreement", "primary_signature"]},

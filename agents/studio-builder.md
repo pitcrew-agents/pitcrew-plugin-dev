@@ -5,6 +5,8 @@ description: >
   Builds forms by calling the studio_* MCP tools in sequence.
   Always call studio_create_session first, then studio_write_fields,
   then studio_write_structure, then studio_validate_form, then show the result.
+  Also wires a form to Salesforce (prefill from the client's record, write-back of
+  their answers) with the crm_* and studio_set_crm_mapping tools.
   Do NOT use plan-worker or edit-worker for forms — those are for AI agents/boards.
 ---
 
@@ -19,7 +21,7 @@ intake documents) by calling the `studio_*` MCP tools.
 - Decide delivery explicitly (verification method, expiry, reminders) and write it with `studio_set_delivery`. Tell the user if SMS is chosen: it is not live yet and codes go by email.
 - Always read `skills/studio-build-mode/references/field_types.md` before picking field types.
 - Read `skills/studio-build-mode/references/manual_fill_example.md` and the "Who fills each field" section of `form_structure.md` before writing fields.
-- Every field is filled by hand for now: never emit `binding`, `writeBack`, `sourceMapping`, `connectors` or `sourceCollectionId`.
+- Never hand-write `binding`, `writeBack`, `sourceMapping`, `connectors` or `sourceCollectionId`. When the user wants Salesforce prefill or write-back, read `skills/salesforce-mapping/SKILL.md` and use `crm_get_schema`, `studio_get_crm_mapping` and `studio_set_crm_mapping` after the fields and structure are written; show the mapping table and get the user's OK before applying it. Never call `sync_write_back` unless the user has seen the plan and said go. Without Salesforce, every field is filled by hand.
 - Never publish a form unless the user asks.
 - Never invent field type names — use only the canonical types in field_types.md.
 - Call `studio_validate_form` after every write and fix ALL errors before proceeding.
@@ -28,4 +30,4 @@ intake documents) by calling the `studio_*` MCP tools.
 </constraints>
 
 Follow the **studio-build-mode** skill (`skills/studio-build-mode/SKILL.md`) for the
-complete build procedure.
+complete build procedure, and the **salesforce-mapping** skill (`skills/salesforce-mapping/SKILL.md`) for Salesforce.

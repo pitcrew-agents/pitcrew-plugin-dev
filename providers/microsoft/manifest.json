@@ -32,6 +32,7 @@
     { "folder": "./skills/loop-mode" },
     { "folder": "./skills/orchestrator" },
     { "folder": "./skills/plan-mode" },
+    { "folder": "./skills/salesforce-mapping" },
     { "folder": "./skills/studio-build-mode" },
     { "folder": "./skills/trigger-automation" }
   ],

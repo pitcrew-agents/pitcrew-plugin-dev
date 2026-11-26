@@ -38,7 +38,7 @@ Always use the exact string in the `Code` column. Never invent variations.
 
 | Name | Code | Stores | Key config / validation |
 |---|---|---|---|
-| Date | `date` | ISO date string | `minDate?`, `maxDate?` |
+| Date | `date` | ISO date string | `minDate?`, `maxDate?`, `config.placeholder?` |
 | Time | `time` | time string | `minuteStep?` |
 | Date and time | `datetime` | date+time | `timezone?`, `fixedTimezone?` |
 | Date range | `date_range` | start+end dates (web only) | `maxSpanDays?` |
@@ -46,7 +46,7 @@ Always use the exact string in the `Code` column. Never invent variations.
 | Month and year | `month_year` | month+year | — |
 | Duration | `duration` | ISO duration | `units?` |
 
-**Date of birth** — use `date_of_birth` (personal type), NOT `date`:
+**Date of birth** — use `date_of_birth` (personal type), NOT `date` (`config.placeholder?` is an optional override):
 
 ```json
 {"key": "dob", "type": "date_of_birth", "label": "Date of birth",
@@ -58,9 +58,9 @@ Always use the exact string in the `Code` column. Never invent variations.
 
 | Name | Code | Stores | Key config |
 |---|---|---|---|
-| Yes / No | `yes_no` | "yes" / "no" / "unsure" | `allowUnsure?`, `unsureLabel?` |
-| Single select | `single_select` | `{value}` | `options`, `allowOther?`, `limitTo?` |
-| Multi select | `multi_select` | `[{value}]` | `options`, `allowOther?`, `minSelected?`, `maxSelected?` |
+| Yes / No | `yes_no` | "yes" / "no" / "unsure" | `allowUnsure?`, `unsureLabel?`, `yes?`, `no?` (own wording for the two answers; otherwise the platform's) |
+| Single select | `single_select` | `{value}` | `options`, `allowOther?`, `otherLabel?`, `selectPlaceholder?`, `limitTo?` |
+| Multi select | `multi_select` | `[{value}]` | `options`, `allowOther?`, `otherLabel?`, `selectPlaceholder?`, `minSelected?`, `maxSelected?` |
 | Ranking | `ranking` | options in order (web only) | `options`, `rankAll?` |
 | Matrix / grid | `matrix` | option(s) per row (web only) | `rows`, `columns`, `multiplePerRow?` |
 | Dependent select | `cascading_select` | option per level (web only) | `levels` |
@@ -86,8 +86,8 @@ Always use the exact string in the `Code` column. Never invent variations.
 |---|---|---|---|
 | Person name | `person_name` | `{first, last, middle?, suffix?}` | `parts?` |
 | Email | `email` | email address | `verify?` |
-| Phone | `phone` | E.164 number | `defaultCountry?`, `kind?`, `verify?` |
-| Postal address | `address` | structured address | `countries?`, `normalize?`, `excludePoBox?` |
+| Phone | `phone` | E.164 number | `defaultCountry?`, `kind?`, `verify?`, `searchPlaceholder?` |
+| Postal address | `address` | structured address | `countries?`, `normalize?`, `excludePoBox?`, `statePlaceholder?` |
 | Website / URL | `url` | web link | — |
 
 ## Sensitive (3) — 🔒 SECRET fields
@@ -124,7 +124,7 @@ Always use the exact string in the `Code` column. Never invent variations.
 
 | Name | Code | Required config |
 |---|---|---|
-| Signature | `signature` | `signers: [{role, nameField}]`, `typedMustMatch?` |
+| Signature | `signature` | `signers: [{role, nameField}]`, `typedMustMatch?`, `typedPlaceholder?` |
 | Initials | `initials` | — |
 | Consent / acknowledgment | `consent` | `text`, `textVersion` |
 
@@ -205,7 +205,10 @@ Rules: owner `client` only; signer `role` is `client` or `co_client`; `typedMust
 
 Always use `{"expr": "..."}` objects — never a plain string.
 
-## Binding sources (not supported by this builder yet — do not add `binding`)
+## Binding sources (do not write these by hand)
+
+A `binding` connects a question to where its value comes from. The only one the builder sets is a Salesforce binding, through `studio_set_crm_mapping`
+(see the `salesforce-mapping` skill). Never write `binding`, `writeBack` or `connectors` into a field yourself. For reference, the shapes:
 
 ```json
 "binding": {"source": "system_of_record", "path": "client.fieldName", "confidence": "high"}

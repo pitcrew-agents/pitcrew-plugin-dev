@@ -146,6 +146,10 @@ and needs the user's OK.
   1. Your details — full_name, email, dob, advisor_note
   2. Annual check-in — risk, goals, consent_ack
 
+**Form settings:**
+  • Progress line: "Step 2 of 2 · about 3 min left"   (progress: step, minutes_left)
+  • Help text shown to: the client   • Known answers shown as: read-only rows
+
 **Delivery:**
   • Verification: email code, 6 digits, to the email field `email`
   • Link expires: 10 days after sending
@@ -154,6 +158,25 @@ and needs the user's OK.
 
 Does this look right? Reply "yes" to build it.
 ```
+
+### 2a. Form settings (always state them in the plan)
+
+These top-level settings change how the form looks to the client and the sender. A form with none of them shows no progress line, so state them rather than leaving them to chance.
+Use what the user said; for anything unsaid, propose the default below and let them change it. Write them in `form_header` (step 4).
+
+| Setting | Propose | Notes |
+|---|---|---|
+| `progress` | `["step"]`; add `"minutes_left"` when screens carry `estimatedMinutesLeft`; `"done"` ("5 of 12 done") for long single-screen forms | Left out, **no progress line shows**. Each piece once. |
+| `helpTextShownTo` | `["client"]` when help text speaks to the client; otherwise leave out (both) | Who sees `helpText`: client and/or the sender on the send pages |
+| `oneRowPerQuestion` | `true` only for joint forms that repeat the same question for both holders | Merges them into one row on the "What you control" tab |
+| `prefilled` | leave out (`"rows"`: known answers read-only with a change link); `"inputs"` when clients are expected to edit most of them | |
+
+See `references/form_structure.md` ("Form-level settings") for the details.
+
+**Wording.** Write only the form's own content: labels, help text, option labels, headings, validation messages, screen titles, intros and headings, the completion message.
+Never write the platform's own words (Back, Submit, Continue, Upload, loading and error messages, "Step n of N", Yes/No): the spec has no property for them and refuses the form if
+you invent one (`submitLabel` is the usual mistake). Use an optional override (`yes`/`no`, `selectPlaceholder`, `otherLabel`, `placeholder`, `typedPlaceholder`, `addLabel`, `emptyRowText`, …)
+only when this form needs its own wording; otherwise leave it out. A screen's `heading` is for a page headline that differs from the step's `title`.
 
 ### 2b. Delivery settings (always decide, never leave to defaults)
 
@@ -193,7 +216,7 @@ Read `skills/studio-build-mode/references/field_types.md` to pick the exact type
 (advisor-filled fields, two respondents, conditional fields, defaults, rules, completion variants).
 
 Call `studio_write_fields` ONCE with:
-- `form_header`: title, schemaVersion "0.3.0", `delivery: {"allowFinishLater": true}` (real settings come in step 5b)
+- `form_header`: title, schemaVersion "0.3.0", the form settings from step 2a (`progress`, and `helpTextShownTo`, `oneRowPerQuestion`, `prefilled` when chosen), `delivery: {"allowFinishLater": true}` (real settings come in step 5b)
 - `fields`: the complete desired fields[] array
 
 After the call, call `studio_validate_form` and fix any errors. One error is expected until
@@ -202,7 +225,7 @@ structure is written: `completion.title: Field required`. Ignore it for now.
 ### 5. Write structure
 
 Call `studio_write_structure` ONCE with:
-- `screens`: complete desired screens[] — every field key must exist in fields[]
+- `screens`: complete desired screens[] (`id`, `title`, optional `heading`, `intro`, `summaryOf`, `estimatedMinutesLeft`, `sections`) — every field key must exist in fields[]. No `submitLabel`: it is refused
 - `rules`: cross-field rules (if any)
 - `completion`: title, message, offerSignedCopy (optional)
 
@@ -276,6 +299,8 @@ Max 3 repair attempts; if still failing, tell the user which errors remain.
 - Do NOT hand-write `binding`, `writeBack`, `sourceMapping`, `connectors` or `sourceCollectionId` in fields. Salesforce prefill and write-back are set only with `studio_set_crm_mapping` (step 5c, the **salesforce-mapping** skill); without it every field is filled by hand.
 - Decide who fills each field: client (default), advisor (`"owner": "member"`), or a second person (`"respondent": "co_client"`). See "Who fills each field" in `form_structure.md`.
 - Multi-respondent: pass `respondents` in `studio_write_fields`, listing `client` first and then `co_client`; add `"respondent": "co_client"` on co-client fields.
+- **Words.** Write the form's own content only. Never write the platform's words (Back, Submit, Continue, loading and error text): there is no property for them, and a stray property makes the form invalid. A screen has no `submitLabel`. Optional overrides only when the form needs its own wording (`references/form_structure.md`, "What you write, and what the platform says").
+- **Progress.** A form with no `progress` setting shows no progress line: always decide it (step 2a).
 - Completion variants use `when`, never `condition`.
 - Set delivery with `studio_set_delivery`, never by hand-editing `delivery` JSON.
 - Expressions only use the grammar in `form_structure.md`; the validator rejects anything else.
